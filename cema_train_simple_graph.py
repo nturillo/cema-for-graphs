@@ -339,8 +339,8 @@ def train(compute_reward,
             # plt.ion()
 
             writer.add_figure('best graph', plt.figure(num=1), gen)
-            # fig_name = f'fig-{gen}.png'
-            # plt.savefig(fig_name, transparent=True)
+            fig_name = f'complete_graph_gen/fig-{gen}.png'
+            plt.savefig(fig_name, transparent=True)
 
     # freeing the resources...
     plt.close('all')
