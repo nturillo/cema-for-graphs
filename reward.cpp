@@ -132,8 +132,8 @@ extern "C" {
                 } 
             }
 
-            // if q is now positive, player one wins
-            if (temp_divisor[q] > 0) return false;
+            // if q is now out of debt, player one wins
+            if (temp_divisor[q] >= 0) return false;
         }
 
     }
@@ -168,17 +168,25 @@ extern "C" {
         // run binary search to find the gonality
         int left = 1;
         int right = n-1;
+        int works[n-1];
+        for (int i = 0; i < n-1; i++) {
+            works[i] = 0;
+        }
 
-        while (true) {
+        while (right - left > 1) {
             int mid = (left + right) / 2;
-            if (check_gonality(n, A, mid, num_compositions[mid], compositions[mid])) {
-                if (left >= mid-1) return mid;
+            if (check_gonality(n, A, mid, num_compositions[mid-1], compositions[mid-1])) {
+                works[mid] = 1;
                 right = mid;
             } else {
-                if (right <= mid+1) return mid+1;
+                works[mid] = 2;
                 left = mid;
             }
         }
+        if (works[left] == 1) return left;
+        if (works[left] == 2) return right;
+        if (check_gonality(n, A, left, num_compositions[left-1], compositions[left-1])) return left;
+        return right;
     }
 
     inline int genus(int n, int8_t* A) {
@@ -219,27 +227,23 @@ extern "C" {
     }
 
     double genus_minus_gonality_reward(int n, int8_t* A) {
-        if (!connected(n, A)) return - 100;
+        if (!connected(n, A)) return -100.0;
         return gonality(n, A) - ( (double) genus(n, A) + 3) / 2;
     }
 }
 
 
 int main(int argc, char** argv) {
-    int n = 10;
-    int8_t A[n * n] = {0, 0, 0, 0, 1, 0, 0, 1, 0, 1,
-                    0, 0, 0, 0, 0, 0, 1, 0, 1, 1,
-                    0, 0, 0, 1, 0, 0, 0, 1, 0, 0,
-                    0, 0, 1, 0, 0, 0, 0, 0, 1, 0,
-                    1, 0, 0, 0, 0, 1, 0, 0, 1, 1,
-                    0, 0, 0, 0, 1, 0, 1, 0, 0, 0,
-                    0, 1, 0, 0, 0, 1, 0, 0, 0, 0,
-                    1, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-                    0, 1, 0, 1, 1, 0, 0, 0, 0, 0,
-                    1, 1, 0, 0, 1, 0, 0, 0, 0, 0};
+    int n = 6;
+    int8_t A[n * n] = {0, 0, 0, 0, 1, 1,
+                        0, 0, 0, 0, 1, 0,
+                        0, 0, 0, 0, 0, 1,
+                        0, 0, 0, 0, 1, 1,
+                        1, 1, 0, 1, 0, 1,
+                        1, 0, 1, 1, 1, 0};
 
     populate_compositions(n);
     //print_compositions(n);
 
-    std::cout << "Gonality of complete graph on " << n << " vertices: " << gonality(n, A) << "\n";
+    std::cout << "Gonality of graph on " << n << " vertices: " << gonality(n, A) << "\n";
 }

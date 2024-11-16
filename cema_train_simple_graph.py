@@ -64,7 +64,7 @@ def step(position, next_actions, obs_new, act_new, batch_size, autlen, rng, act_
     if (position<autlen-1):
         obs_new[:, position+1, autlen+position+1] = 1
 
-def new_generation(model, obs_new, act_new, rew_new, batch_size, autlen, rng, act_rndness, n, compute_reward):
+def new_generation(model, device, obs_new, act_new, rew_new, batch_size, autlen, rng, act_rndness, n, compute_reward):
     """Creates a new generation of batch_size graphs from the currently trained neural network,
        computing the final rewards afterwards
     """
@@ -75,7 +75,10 @@ def new_generation(model, obs_new, act_new, rew_new, batch_size, autlen, rng, ac
     for position in range(autlen):
         # use the network to predict action probabilities from current observations
         obs_t = torch.FloatTensor(obs_new[:, position, :])
+        obs_t = obs_t.to(device)
         probs_t = nn.Softmax(dim=1)(model(obs_t))           # the network issues action probabilities
+        if device == torch.device("cuda"):
+            probs_t = probs_t.cpu()
         next_probs = probs_t.data.numpy()
 
         # how to write this in a more numpy-onic way - could not find better suggestion...
@@ -176,6 +179,13 @@ def train(compute_reward,
     # which will be applied later to deduce action probabilities
     model = model.append(nn.Linear(neurons[-1], 2))         # 2 = possible actions for simple graphs
                                                             # 3 = possible actions for signed graphs
+    
+    using_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if using_cuda else "cpu")
+    if using_cuda:
+        print("Using GPU")
+    model = model.to(device)  # Move the model to GPU
+
 
     objective = nn.CrossEntropyLoss()   # combines together the softmax layer applied to the network output
                                         # with cross entropy loss with actual actions used,
@@ -220,7 +230,7 @@ def train(compute_reward,
         tic = time.perf_counter()
 
         # generate the next batch of graphs
-        new_generation(model, obs_new, act_new, rew_new, batch_size, autlen, rng, act_rndness, n, compute_reward)
+        new_generation(model, device, obs_new, act_new, rew_new, batch_size, autlen, rng, act_rndness, n, compute_reward)
 
         # add earlier survivors to the new batch
         if gen==0:
@@ -253,13 +263,15 @@ def train(compute_reward,
         # so that the first dimension is the number of pairs from which to learn,
         # and the second dimension corresponds to the number of model inputs/outputs = obslen/1
         num_learn_pairs = ind_learn.size * autlen
-        obs_learn = obs_full[ind_learn, 0:autlen, :].reshape(num_learn_pairs, obslen)
-        act_learn = act_full[ind_learn, :].reshape(num_learn_pairs)
+        obs_learn = torch.FloatTensor(obs_full[ind_learn, 0:autlen, :].reshape(num_learn_pairs, obslen))
+        obs_learn = obs_learn.to(device)
+        act_learn = torch.LongTensor(act_full[ind_learn, :].reshape(num_learn_pairs))
+        act_learn = act_learn.to(device)
 
         # trains the neural network on selected observation/action pairs
         optimizer.zero_grad()
-        act_learn_scores = model(torch.FloatTensor(obs_learn))              # predicts raw score for each possible action
-        loss = objective(act_learn_scores, torch.LongTensor(act_learn))     # combines softmax layer for the above raw scores
+        act_learn_scores = model(obs_learn)              # predicts raw score for each possible action
+        loss = objective(act_learn_scores, act_learn)     # combines softmax layer for the above raw scores
                                                                             # with cross entropy loss for the actual actions used
         loss.backward()
         optimizer.step()
@@ -332,15 +344,16 @@ def train(compute_reward,
             max_A = adj_from_obs(n, obs_full[ind_maximum, autlen, 0:autlen])
             gnx = nx.from_numpy_array(max_A)
 
-            plt.figure(num=1, figsize=(4,4), dpi=300)
-            nx.draw_kamada_kawai(gnx, node_size=80)
+            plt.figure(figsize=(4,4), dpi=300)
+            nx.draw(gnx, node_size=80)
+            # nx.draw_kamada_kawai(gnx, node_size=80)
 
             # uncomment this to have the graph shown immediately (in pycharm, for example)
             # plt.ion()
 
-            writer.add_figure('best graph', plt.figure(num=1), gen)
-            fig_name = f'complete_graph_gen/fig-{gen}.png'
-            plt.savefig(fig_name, transparent=True)
+            # writer.add_figure('best graph', plt.figure(num=1), gen)
+            fig_name = f'training_images/fig-{gen}.png'
+            plt.savefig(fig_name)
 
     # freeing the resources...
     plt.close('all')

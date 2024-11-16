@@ -31,10 +31,10 @@ reward_library.genus.restype = ctypes.c_int
 reward_library.genus_minus_gonality_reward.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
 reward_library.genus_minus_gonality_reward.restype = ctypes.c_double
 
-for i in range(0, 100):
-    n = 4
+
+for n in range(2, 11):
     reward_library.populate_compositions(n)
-    g = nx.gnp_random_graph(n, 0.4)
+    g = nx.cycle_graph(n)
     A = np.array(nx.adjacency_matrix(g).todense(), dtype=np.int8)
     # print("A: {")
     # for row in A:
@@ -43,17 +43,12 @@ for i in range(0, 100):
     # print("}")
     genus_minus_gonality = reward_library.genus_minus_gonality_reward(n, A.ctypes.data_as(ctypes.POINTER(ctypes.c_int)))
     
-    if (genus_minus_gonality > 0):
-        print(A)
-        print(f"i: {i}")
-        print(f"Genus minus gonality of n={n}: {genus_minus_gonality}")
-        print(f"Gonality: {reward_library.gonality(n, A.ctypes.data_as(ctypes.POINTER(ctypes.c_int)))}")
-        print(f"Genus: {reward_library.genus(n, A.ctypes.data_as(ctypes.POINTER(ctypes.c_int)))}")
-        print(f"Connected: ", nx.is_connected(g))
-        print()
-
-        plt.figure()
-        nx.draw(g)
-        #plt.savefig(f"graph_{i}.png")
+    print(A)
+    print(f"n: {n}")
+    print(f"Genus minus gonality of n={n}: {genus_minus_gonality}")
+    print(f"Gonality: {reward_library.gonality(n, A.ctypes.data_as(ctypes.POINTER(ctypes.c_int)))}")
+    print(f"Genus: {reward_library.genus(n, A.ctypes.data_as(ctypes.POINTER(ctypes.c_int)))}")
+    print(f"Connected: ", nx.is_connected(g))
+    print()
 
     reward_library.delete_compositions(n)
