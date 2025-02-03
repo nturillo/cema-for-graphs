@@ -228,22 +228,25 @@ extern "C" {
 
     double genus_minus_gonality_reward(int n, int8_t* A) {
         if (!connected(n, A)) return -100.0;
-        return gonality(n, A) - ( (double) genus(n, A) + 3) / 2;
+        int g = genus(n, A);
+        if (g <= 12) return -50.0;
+        return gonality(n, A) - ( (double) g + 3) / 2;
     }
 }
 
-
-int main(int argc, char** argv) {
-    int n = 6;
-    int8_t A[n * n] = {0, 0, 0, 0, 1, 1,
-                        0, 0, 0, 0, 1, 0,
-                        0, 0, 0, 0, 0, 1,
-                        0, 0, 0, 0, 1, 1,
-                        1, 1, 0, 1, 0, 1,
-                        1, 0, 1, 1, 1, 0};
-
-    populate_compositions(n);
-    //print_compositions(n);
-
-    std::cout << "Gonality of graph on " << n << " vertices: " << gonality(n, A) << "\n";
-}
+//
+//int main(int argc, char** argv) {
+//    int n = 6;
+//    int8_t A[n * n] = {0, 0, 0, 0, 1, 1,
+//                        0, 0, 0, 0, 1, 0,
+//                        0, 0, 0, 0, 0, 1,
+//                        0, 0, 0, 0, 1, 1,
+//                        1, 1, 0, 1, 0, 1,
+//                        1, 0, 1, 1, 1, 0};
+//
+//    populate_compositions(n);
+//    //print_compositions(n);
+//
+//    std::cout << "Gonality of graph on " << n << " vertices: " << gonality(n, A) << "\n";
+//}
+//
